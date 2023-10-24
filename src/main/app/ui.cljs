@@ -2,7 +2,6 @@
   (:require
     [com.fulcrologic.fulcro.components :as comp :refer [defsc]]
     [com.fulcrologic.fulcro.mutations :refer [defmutation]]
-    [com.fulcrologic.fulcro.algorithms.merge :as merge]
     [com.fulcrologic.fulcro.dom :as dom]))
 
 (defsc TodoAppTitle
@@ -39,7 +38,7 @@
 
 (defmutation edit-todo [{:keys [id new-value]}]
   (action [{:keys [state]}]
-          (swap! state assoc-in [:todo-item/id id :todo-item/value] new-value)))
+          (swap! state assoc-in [:root/todo-list :todo-list/items (dec id) :todo-item/value] new-value)))
 
 (defsc TodoItem
   [this {:todo-item/keys [id value]}]
