@@ -2,6 +2,7 @@
   (:require
     [com.fulcrologic.fulcro.components :as comp :refer [defsc]]
     [com.fulcrologic.fulcro.mutations :refer [defmutation]]
+    [com.fulcrologic.fulcro.data-fetch :as df]
     [com.fulcrologic.fulcro.dom :as dom]))
 
 (defsc TodoAppTitle
@@ -49,10 +50,7 @@
                     {
                      :id id
                      :edit-value value
-                     :checked? false
                      :editing? false
-                     :on-change (fn [e]
-                                  (comp/set-state! this (assoc (comp/get-state this) :checked (.. e -target -checked))))
                      :on-edit-change (fn [e]
                                        (comp/set-state! this (assoc (comp/get-state this) :edit-value (.. e -target -value))))
                      :on-edit-ok     (fn [_]
@@ -137,9 +135,7 @@
   {:query [:todo-list/id
            :todo-list/item-count
            {:todo-list/items (comp/get-query TodoItem)}]
-   :initial-state {:todo-list/id 1
-                   :todo-list/item-count 0
-                   :todo-list/items []}
+   :initial-state {}
   }
   (dom/div {:style {:display "flex"
                     :alignItems "center"
@@ -152,19 +148,17 @@
 (def ui-todo-list (comp/factory TodoList))
 
 (defsc Root
-  [this {:root/keys [todo-list todo-input]}]
-  {:query [{:root/todo-input (comp/get-query TodoInput)}
-           {:root/todo-list (comp/get-query TodoList)}]
-  :initial-state
-      {:root/todo-input {:todo-input/value ""}
-       :root/todo-list {:id 1}
-      }
+  [this {:root/keys [todo-list]}]
+  {:query [{:root/todo-list (comp/get-query TodoList)}]
+   :initial-state {}
+   :componentDidMount (fn [this]
+                        (df/load! this :root/todo-list TodoList))
   }
   (dom/div {:style {:margin "0 auto"
                     :backgroundColor "#f5f5f5"
                     :textAlign "center"
                     :padding "20px"}}
            (ui-todo-app-title)
-           (ui-todo-input todo-input)
+           (ui-todo-input)
            (ui-todo-list todo-list)
        ))
