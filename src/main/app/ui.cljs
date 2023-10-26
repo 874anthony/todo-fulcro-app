@@ -35,7 +35,9 @@
       (println "Before:" current-todos)
       (swap! state update-in [:root/todo-list :todo-list/items]
              #(vec (remove (fn [item] (= (:todo-item/id item) id)) %)))
-      (println "After:" (get-in @state [:root/todo-list :todo-list/items])))))
+      (println "After:" (get-in @state [:root/todo-list :todo-list/items]))))
+      (remote [env] true)
+    )
 
 (defmutation edit-todo [{:keys [id new-value]}]
   (action [{:keys [state]}]
@@ -57,7 +59,7 @@
                                        (comp/transact! this [(edit-todo {:id id :new-value (comp/get-state this :edit-value)})])
                                        (comp/set-state! this (assoc (comp/get-state this) :editing? false)))
                      :on-edit-click #(comp/set-state! this (assoc (comp/get-state this) :editing? true))
-                     :on-delete      #(comp/transact! this [(delete-todo {:id id})])
+                     :on-delete     #(comp/transact! this [(delete-todo {:id id})])
                     })
   }
   (let [{:keys [editing? on-edit-click edit-value on-edit-change on-edit-ok on-delete]} (comp/get-state this)]

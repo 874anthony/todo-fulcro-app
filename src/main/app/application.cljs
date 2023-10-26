@@ -6,4 +6,4 @@
 
 (defonce app (app/fulcro-app
   {:remotes {:remote (http/fulcro-http-remote {})}}
-))
+  ))
