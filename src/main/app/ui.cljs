@@ -28,16 +28,18 @@
 
 (def ui-todo-app-title (comp/factory TodoAppTitle))
 
-(defmutation delete-todo [{:keys [id]}]
+(defmutation delete-todo [{:keys [list-id todo-id]}]
   (action
     [{:keys [state]}]
     (let [current-todos (get-in @state [:root/todo-list :todo-list/items])]
       (println "Before:" current-todos)
       (swap! state update-in [:root/todo-list :todo-list/items]
-             #(vec (remove (fn [item] (= (:todo-item/id item) id)) %)))
+             #(vec (remove (fn [item] (= (:todo-item/id item) todo-id)) %)))
       (println "After:" (get-in @state [:root/todo-list :todo-list/items]))))
-      (remote [env] true)
-    )
+  (remote [env]
+          {:todo-list/id list-id,
+           :todo-item/id todo-id}
+          ))
 
 (defmutation edit-todo [{:keys [id new-value]}]
   (action [{:keys [state]}]
@@ -59,8 +61,8 @@
                                        (comp/transact! this [(edit-todo {:id id :new-value (comp/get-state this :edit-value)})])
                                        (comp/set-state! this (assoc (comp/get-state this) :editing? false)))
                      :on-edit-click #(comp/set-state! this (assoc (comp/get-state this) :editing? true))
-                     :on-delete     #(comp/transact! this [(delete-todo {:id id})])
-                    })
+                     :on-delete     #(comp/transact! this [(delete-todo {:list-id 1, :todo-id id})])
+                     })
   }
   (let [{:keys [editing? on-edit-click edit-value on-edit-change on-edit-ok on-delete]} (comp/get-state this)]
     (if editing?
