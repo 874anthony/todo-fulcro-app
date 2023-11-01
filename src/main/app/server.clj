@@ -3,6 +3,7 @@
     [app.parser :refer [api-parser]]
     [org.httpkit.server :as http]
     [com.fulcrologic.fulcro.server.api-middleware :as server]
+    [app.db :as db]
     [ring.middleware.content-type :refer [wrap-content-type]]
     [ring.middleware.resource :refer [wrap-resource]]))
 
@@ -24,6 +25,7 @@
 (defonce stop-fn (atom nil))
 
 (defn start []
+  (db/start)
   (reset! stop-fn (http/run-server middleware {:port 3000})))
 
 (defn stop []

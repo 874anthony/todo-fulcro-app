@@ -1,10 +1,12 @@
 {:paths   ["src/main" "resources"]
  :deps    {org.clojure/clojure    {:mvn/version "1.10.3"}
            com.fulcrologic/fulcro {:mvn/version "3.5.9"}
+           com.datomic/datomic-pro     {:mvn/version "1.0.6711"}
            com.wsscode/pathom     {:mvn/version "2.4.0"}
            com.taoensso/timbre    {:mvn/version "5.1.2"}
            ring/ring-core         {:mvn/version "1.9.4"}
            http-kit/http-kit      {:mvn/version "2.5.3"}}
+ :mvn/repos {"my.datomic.com" {:url "https://my.datomic.com/repo"}}
 
  :aliases {:dev {:extra-paths ["src/dev"]
                  :extra-deps  {org.clojure/clojurescript   {:mvn/version "1.10.914"}

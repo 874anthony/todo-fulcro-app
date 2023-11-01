@@ -1,7 +1,7 @@
 (ns app.ui
   (:require
     [com.fulcrologic.fulcro.components :as comp :refer [defsc]]
-    [com.fulcrologic.fulcro.mutations :refer [defmutation]]
+    [com.fulcrologic.fulcro.mutations :as m :refer [defmutation]]
     [com.fulcrologic.fulcro.data-fetch :as df]
     [com.fulcrologic.fulcro.dom :as dom]))
 
@@ -34,12 +34,9 @@
     (let [current-todos (get-in @state [:root/todo-list :todo-list/items])]
       (println "Before:" current-todos)
       (swap! state update-in [:root/todo-list :todo-list/items]
-             #(vec (remove (fn [item] (= (:todo-item/id item) todo-id)) %)))
+             #(vec (remove (fn [item] (prn "Item" (:todo-item/id item) todo-id) (= (:todo-item/id item) todo-id)) %)) )
       (println "After:" (get-in @state [:root/todo-list :todo-list/items]))))
-  (remote [env]
-          {:todo-list/id list-id,
-           :todo-item/id todo-id}
-          ))
+  (remote [env] (m/with-params env {:todo-list/id list-id, :todo-item/id todo-id})))
 
 (defmutation edit-todo [{:keys [id new-value]}]
   (action [{:keys [state]}]
@@ -96,7 +93,9 @@
           new-item {:todo-item/id new-id :todo-item/value value}]
       (swap! state update-in [:root/todo-list :todo-list/items] conj new-item)
       (swap! state update-in [:root/todo-list :todo-list/item-count] inc)
-      )))
+      ))
+   (remote [env] (m/with-params env {:todo-list/id list-id, :todo-item/value value}))
+  )
 
 (defsc TodoInput
   [this {:todo-input/keys [value]}]
@@ -112,7 +111,6 @@
                       })
    }
   (let [{:keys [on-change on-add input-value]} (comp/get-state this)]
-    (println "input-value" input-value)
     (dom/div {:style {:display "flex"
                       :flexDirection "row"
                       :gap "8px"}}
