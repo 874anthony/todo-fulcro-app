@@ -23,6 +23,22 @@
                 {::pc/sym `app.ui/add-todo}
                 (log/info "Adding todo" todo-value "to list" list-id)
 
+                ;; First, grab the entity ID of the todo-list (in this case the todo list is 1)
+                (let [db (d/db @db/conn)
+                      result @(d/transact @db/conn [{:db/id (d/tempid :db.part/user)
+                                                    :todo-item/id (inc (count @todos-table))
+                                                    :todo-item/value todo-value}])
+                      tempids (:tempids result)
+                      tempid (first (keys tempids))
+                      todo-item-eid (get tempids tempid)
+                      query-result (d/q '[:find ?e
+                                          :where
+                                          [?e :todo-list/id ?id]]
+                                        db 1)
+                      todo-list-eid (first (map first query-result))]
+
+                  (d/transact @db/conn [[:db/add todo-list-eid :todo-list/items todo-item-eid]]))
+
                 ;; Add the todo item to the todos-table
                 (let [new-id (inc (count @todos-table))]
                   (swap! todos-table assoc new-id {:todo-item/id new-id :todo-item/value todo-value})
@@ -36,6 +52,15 @@
 (pc/defmutation edit-todo [env {todo-id :todo-item/id new-value :todo-item/value}]
                 {::pc/sym `app.ui/edit-todo}
                 (log/info "Editing todo" todo-id "to" new-value)
+
+                (let [db (d/db @db/conn)
+                      query-result (d/q '[:find ?value
+                                          :where
+                                          [?e :todo/value ?value]]
+                                        db)
+                      todos (map first query-result)]
+
+                  (println "These are all the todos: " todos))
 
                 ;; Update the todo item in the todos-table
                 (swap! todos-table update todo-id assoc :todo-item/value new-value))
