@@ -35,7 +35,6 @@
                                            {:todo-item/id id
                                             :todo-item/value value}
                                            )) todo-items-eids)]
-
                     {:todo-list/item-count (count todo-items)
                      :todo-list/items todo-items}))
 
