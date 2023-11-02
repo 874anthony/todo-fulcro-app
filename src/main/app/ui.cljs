@@ -28,24 +28,20 @@
 
 (def ui-todo-app-title (comp/factory TodoAppTitle))
 
-(defmutation delete-todo [{:keys [list-id todo-id]}]
-  (action
-    [{:keys [state]}]
-    (let [current-todos (get-in @state [:root/todo-list :todo-list/items])]
-      (println "Before:" current-todos)
-      (swap! state update-in [:root/todo-list :todo-list/items]
-             #(vec (remove (fn [item] (prn "Item" (:todo-item/id item) todo-id) (= (:todo-item/id item) todo-id)) %)) )
-      (println "After:" (get-in @state [:root/todo-list :todo-list/items]))))
-  (remote [env] (m/with-params env {:todo-list/id list-id, :todo-item/id todo-id})))
-
-(defmutation edit-todo [{:keys [id new-value]}]
+(defmutation delete-todo [{:todo-item/keys [id]}]
   (action [{:keys [state]}]
-          (swap! state assoc-in [:root/todo-list :todo-list/items (dec id) :todo-item/value] new-value)))
+    (swap! state update-in [:root/todo-list :todo-list/items]
+           (fn [items] (vec (remove #(= (second %) id) items))))
+    (swap! state update-in [:todo-item/id] dissoc id)
+    (swap! state update-in [:root/todo-list :todo-list/item-count] dec))
+  (remote [env] true))
+
+(defmutation edit-todo [{:keys [state]}]
+  (remote [env] true))
 
 (defsc TodoItem
   [this {:todo-item/keys [id value]}]
-  {:query [:todo-item/id
-           :todo-item/value]
+  {:query [:todo-item/id :todo-item/value]
    :ident :todo-item/id
    :initLocalState (fn [this {:todo-item/keys [id value]}]
                     {
@@ -55,10 +51,12 @@
                      :on-edit-change (fn [e]
                                        (comp/set-state! this (assoc (comp/get-state this) :edit-value (.. e -target -value))))
                      :on-edit-ok     (fn [_]
-                                       (comp/transact! this [(edit-todo {:id id :new-value (comp/get-state this :edit-value)})])
+                                       (let [new-value (comp/get-state this :edit-value)]
+                                         (m/set-value! this :todo-item/value new-value)
+                                         (comp/transact! this `[(edit-todo {:todo-item/id ~id :todo-item/value ~new-value})]))
                                        (comp/set-state! this (assoc (comp/get-state this) :editing? false)))
                      :on-edit-click #(comp/set-state! this (assoc (comp/get-state this) :editing? true))
-                     :on-delete     #(comp/transact! this [(delete-todo {:list-id 1, :todo-id id})])
+                     :on-delete     #(comp/transact! this `[(delete-todo {:todo-list/id 1, :todo-item/id ~id})])
                      })
   }
   (let [{:keys [editing? on-edit-click edit-value on-edit-change on-edit-ok on-delete]} (comp/get-state this)]
@@ -86,16 +84,15 @@
 
 (def ui-todo-item (comp/factory TodoItem {:keyfn :todo-item/id}))
 
-(defmutation add-todo [{:keys [list-id value]}]
-  (action
-    [{:keys [state]}]
-    (let [new-id (inc (get-in @state [:root/todo-list :todo-list/item-count]))
-          new-item {:todo-item/id new-id :todo-item/value value}]
-      (swap! state update-in [:root/todo-list :todo-list/items] conj new-item)
-      (swap! state update-in [:root/todo-list :todo-list/item-count] inc)
-      ))
-   (remote [env] (m/with-params env {:todo-list/id list-id, :todo-item/value value}))
-  )
+  (defmutation add-todo
+    [{:todo-item/keys [value]}]
+    (action [{:keys [state]}]
+      (let [new-id (inc (get-in @state [:root/todo-list :todo-list/item-count])) new-item {:todo-item/id new-id :todo-item/value value}]
+        (swap! state update-in [:todo-item/id] assoc new-id new-item)
+        (swap! state update-in [:root/todo-list :todo-list/items] conj [:todo-item/id new-id])
+        (swap! state update-in [:root/todo-list :todo-list/item-count] inc)
+        ))
+     (remote [env] true))
 
 (defsc TodoInput
   [this {:todo-input/keys [value]}]
@@ -106,7 +103,7 @@
                       :on-change (fn [e]
                                    (comp/set-state! this (assoc (comp/get-state this) :input-value (.. e -target -value))))
                       :on-add (fn [e]
-                                (comp/transact! this [(add-todo {:list-id 1 :value (comp/get-state this :input-value)})])
+                                (comp/transact! this `[(add-todo {:todo-list/id 1 :todo-item/value ~(comp/get-state this :input-value)})])
                                 (comp/set-state! this (assoc (comp/get-state this) :input-value "")))
                       })
    }
