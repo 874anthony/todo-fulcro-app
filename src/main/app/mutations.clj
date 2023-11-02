@@ -1,7 +1,6 @@
 (ns app.mutations
   (:require
-    [app.resolvers :refer [list-table todos-table]]
-    [app.db :as db :refer [conn]]
+    [app.db :as db]
     [datomic.api :as d]
     [com.wsscode.pathom.connect :as pc]
     [taoensso.timbre :as log]))
@@ -10,14 +9,26 @@
                 {::pc/sym `app.ui/delete-todo}
                 (log/info "Deleting todo" todo-id "from list" list-id)
 
-                ;; Remove the todo item from the todos-table
-                (swap! todos-table dissoc todo-id)
+                (let [todo-id-parsed (Integer. todo-id)
+                      db (d/db @db/conn)
+                      query-result (d/q '[:find ?e ?item-count
+                                          :where
+                                          [?e :todo-list/item-count ?item-count]
+                                          [?e :todo-list/id ?id]]
+                                           db 1)
+                      todo-list-eid (first (first query-result))
+                      item-count (second (first query-result))
+                      query-todo-result (d/q '[:find ?e
+                                          :in $ ?id
+                                          :where
+                                          [?e :todo-item/id ?id]]
+                                           db todo-id-parsed)
+                      todo-eid (ffirst query-todo-result)]
 
-                ;; Remove the todo-id from the :todo-list/items in list-table
-                (swap! list-table update :todo-list/items #(remove #{todo-id} %))
-
-                ;; Update the item count
-                (swap! list-table update :todo-list/item-count dec))
+                  (d/transact @db/conn [[:db/retract todo-list-eid :todo-list/items todo-eid]])
+                  (d/transact @db/conn [[:db/retractEntity todo-eid]])
+                  (d/transact @db/conn [{:db/id todo-list-eid
+                                         :todo-list/item-count (dec item-count)}])))
 
 (pc/defmutation add-todo [env {list-id :todo-list/id todo-value :todo-item/value}]
                 {::pc/sym `app.ui/add-todo}
@@ -25,44 +36,38 @@
 
                 ;; First, grab the entity ID of the todo-list (in this case the todo list is 1)
                 (let [db (d/db @db/conn)
+                      query-result (d/q '[:find ?e ?item-count
+                                          :where
+                                          [?e :todo-list/item-count ?item-count]
+                                          [?e :todo-list/id ?id]]
+                                        db 1)
+                      todo-list-eid (first (first query-result))
+                      item-count (second (first query-result))
+
                       result @(d/transact @db/conn [{:db/id (d/tempid :db.part/user)
-                                                    :todo-item/id (inc (count @todos-table))
+                                                    :todo-item/id (inc item-count)
                                                     :todo-item/value todo-value}])
                       tempids (:tempids result)
                       tempid (first (keys tempids))
-                      todo-item-eid (get tempids tempid)
-                      query-result (d/q '[:find ?e
-                                          :where
-                                          [?e :todo-list/id ?id]]
-                                        db 1)
-                      todo-list-eid (first (map first query-result))]
+                      todo-item-eid (get tempids tempid)]
 
-                  (d/transact @db/conn [[:db/add todo-list-eid :todo-list/items todo-item-eid]]))
-
-                ;; Add the todo item to the todos-table
-                (let [new-id (inc (count @todos-table))]
-                  (swap! todos-table assoc new-id {:todo-item/id new-id :todo-item/value todo-value})
-
-                ;; Add the todo-id to the :todo-list/items in list-table
-                  (swap! list-table update :todo-list/items conj new-id))
-
-                ;; Update the item count
-                (swap! list-table update :todo-list/item-count inc))
+                  (d/transact @db/conn [[:db/add todo-list-eid :todo-list/items todo-item-eid]])
+                  (d/transact @db/conn [{:db/id todo-list-eid
+                                         :todo-list/item-count (inc item-count)}])))
 
 (pc/defmutation edit-todo [env {todo-id :todo-item/id new-value :todo-item/value}]
                 {::pc/sym `app.ui/edit-todo}
                 (log/info "Editing todo" todo-id "to" new-value)
 
-                (let [db (d/db @db/conn)
-                      query-result (d/q '[:find ?value
+                (let [todo-id-parsed (Integer. todo-id)
+                      db (d/db @db/conn)
+                      query-result (d/q '[:find ?e
+                                          :in $ ?id
                                           :where
-                                          [?e :todo/value ?value]]
-                                        db)
-                      todos (map first query-result)]
+                                          [?e :todo-item/id ?id]]
+                                          db todo-id-parsed)
+                      todo-eid (ffirst query-result)]
 
-                  (println "These are all the todos: " todos))
-
-                ;; Update the todo item in the todos-table
-                (swap! todos-table update todo-id assoc :todo-item/value new-value))
+                    (d/transact @db/conn [{:db/id todo-eid :todo-item/value new-value}])))
 
 (def mutations [delete-todo add-todo edit-todo])

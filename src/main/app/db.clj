@@ -39,12 +39,6 @@
                   :todo-list/items []}
 ])
 
-(def first-todos [
-    {:db/id (d/tempid :db.part/user) :todo-item/id 1 :todo-item/value "Ir a cenar"}
-    {:db/id (d/tempid :db.part/user) :todo-item/id 2 :todo-item/value "Barrer la casa"}
-    {:db/id (d/tempid :db.part/user) :todo-item/id 3 :todo-item/value "Tomar unas cervezas"}
-])
-
 (defn init-datomic [db-uri]
   (d/create-database db-uri)
   (d/connect db-uri))
@@ -63,5 +57,6 @@
 )
 
 (defn stop []
-  ;; Your code to stop the database connection, if needed
-  )
+  (println "Stopping database")
+  (d/delete-database db-uri)
+  (reset! conn nil))

@@ -56,17 +56,20 @@
                                          (comp/transact! this `[(edit-todo {:todo-item/id ~id :todo-item/value ~new-value})]))
                                        (comp/set-state! this (assoc (comp/get-state this) :editing? false)))
                      :on-edit-click #(comp/set-state! this (assoc (comp/get-state this) :editing? true))
+                     :on-edit-cancel (fn [_]
+                                       (comp/set-state! this (assoc (comp/get-state this) :editing? false
+                                                                                          :edit-value value)))
                      :on-delete     #(comp/transact! this `[(delete-todo {:todo-list/id 1, :todo-item/id ~id})])
                      })
   }
-  (let [{:keys [editing? on-edit-click edit-value on-edit-change on-edit-ok on-delete]} (comp/get-state this)]
+  (let [{:keys [editing? on-edit-click edit-value on-edit-change on-edit-ok on-edit-cancel on-delete]} (comp/get-state this)]
     (if editing?
      (dom/li
          (dom/input {:type "text"
                      :value edit-value
                      :onChange on-edit-change})
          (dom/button {:onClick on-edit-ok} "OK")
-         (dom/button  "Cancel"))
+         (dom/button {:onClick on-edit-cancel} "Cancel"))
      (dom/li {:style {:display "flex"
                 :flexDirection "row"
                 :justifyContent "center"
