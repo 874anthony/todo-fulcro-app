@@ -1,0 +1,9 @@
+{:org.httpkit.server/config  {:port 3000}
+
+ :com.fulcrologic.rad.database-adapters.datomic/databases
+ {:main {:datomic/schema :production
+         :datomic/client {:server-type :dev-local
+                          :storage-dir :mem
+                          :system      "dev"}
+         :datomic/database "todos"}}
+ }
